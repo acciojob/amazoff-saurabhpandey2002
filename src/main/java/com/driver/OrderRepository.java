@@ -1,83 +1,138 @@
 package com.driver;
 
-import java.util.*;
-
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 @Repository
-public class OrderRepository {
+public class OrderRepository
+{
+    HashMap<String,Order> orders = new HashMap<>();
+    HashMap<String,DeliveryPartner> deliveryPartners = new HashMap<>();
+    HashMap<String, List<Order>> ordersReceived = new HashMap<>();
 
-    private HashMap<String, Order> orderMap;
-    private HashMap<String, DeliveryPartner> partnerMap;
-    private HashMap<String, HashSet<String>> partnerToOrderMap;
-    private HashMap<String, String> orderToPartnerMap;
+    HashMap<String, Order> unassignedOrders = new HashMap<>();
 
-    public OrderRepository(){
-        this.orderMap = new HashMap<String, Order>();
-        this.partnerMap = new HashMap<String, DeliveryPartner>();
-        this.partnerToOrderMap = new HashMap<String, HashSet<String>>();
-        this.orderToPartnerMap = new HashMap<String, String>();
+    public void addOrder(Order order)
+    {
+        String orderId = order.getId();
+        orders.put(orderId, order);
+        unassignedOrders.put(orderId, order);
     }
 
-    public void saveOrder(Order order){
-        // your code here
+    public void addPartner(String partnerId)
+    {
+        DeliveryPartner dp = new DeliveryPartner(partnerId);
+        deliveryPartners.put(partnerId, dp);
     }
 
-    public void savePartner(String partnerId){
-        // your code here
-        // create a new partner with given partnerId and save it
+    public void addOrderPartnerPair(String orderId, String partnerId){
+
+
+        List<Order> ordersTillNow = ordersReceived.getOrDefault(partnerId,new ArrayList<>());
+
+        Order newOrder = orders.get(orderId);
+
+        ordersTillNow.add(newOrder);
+
+        ordersReceived.put(partnerId, ordersTillNow);
+
+        DeliveryPartner dp = deliveryPartners.get(partnerId);
+
+        dp.setNumberOfOrders(dp.getNumberOfOrders() +  1);
+
+        unassignedOrders.remove(orderId);
     }
 
-    public void saveOrderPartnerMap(String orderId, String partnerId){
-        if(orderMap.containsKey(orderId) && partnerMap.containsKey(partnerId)){
-            // your code here
-            //add order to given partner's order list
-            //increase order count of partner
-            //assign partner to this order
+    public Order getOrderById(String orderId) {
+
+        Order order = null;
+        //order should be returned with an orderId.
+        order = orders.get(orderId);
+        return order;
+    }
+
+    public DeliveryPartner getPartnerById(String partnerId)
+    {
+        DeliveryPartner deliveryPartner = deliveryPartners.get(partnerId);
+        return deliveryPartner;
+    }
+
+    public Integer getOrderCountByPartnerId(String partnerId)
+    {
+        Integer orderCount = 0;
+        List<Order> ordersTillNow = ordersReceived.get(partnerId);
+        orderCount = ordersTillNow.size();
+        return orderCount;
+    }
+
+
+    public List<Order> getOrdersByPartnerId(String partnerId) {
+        List<Order> orderList = ordersReceived.get(partnerId);
+        return orderList;
+    }
+
+    public List<String> getAllOrders() {
+        List<String> allOrdersList = new ArrayList<>();
+        for(String order : orders.keySet())
+            allOrdersList.add(order);
+        return allOrdersList;
+    }
+
+    public Integer getAssignedOrdersCount() {
+        Integer count = 0;
+        for(String dp : ordersReceived.keySet())
+        {
+            count += ordersReceived.get(dp).size();
         }
+        return count;
     }
 
-    public Order findOrderById(String orderId){
-        // your code here
+    public Integer getCountOfUnassignedOrders() {
+        return unassignedOrders.size();
     }
 
-    public DeliveryPartner findPartnerById(String partnerId){
-        // your code here
+    public void deletePartnerById(String partnerId) {
+        List<Order> orderList = getOrdersByPartnerId(partnerId);
+        for(Order order : orderList)
+        {
+            unassignedOrders.put(order.getId(),order);
+        }
+        DeliveryPartner dp = deliveryPartners.get(partnerId);
+        dp.setNumberOfOrders(0);
+        deliveryPartners.remove(partnerId);
     }
 
-    public Integer findOrderCountByPartnerId(String partnerId){
-        // your code here
+    public boolean containsOrder(List<Order> orderList,Order order)
+    {
+        for(Order o : orderList)
+        {
+            if(o == order)
+                return true;
+        }
+        return false;
     }
 
-    public List<String> findOrdersByPartnerId(String partnerId){
-        // your code here
-    }
+    public void deleteOrderById(String orderId) {
+        Order order = orders.get(orderId);
+        List<Order> orderList = null;
+        String partner = "";
+        for(String pId : ordersReceived.keySet())
+        {
+            if(containsOrder(ordersReceived.get(pId),order))
+            {
+                orderList = ordersReceived.get(pId);
+                partner = pId;
+                break;
+            }
+        }
+        orderList.remove(order);
+        ordersReceived.put(partner,orderList);
+        DeliveryPartner dp = deliveryPartners.get(partner);
+        dp.setNumberOfOrders(dp.getNumberOfOrders() - 1);
+        orders.remove(orderId);
 
-    public List<String> findAllOrders(){
-        // your code here
-        // return list of all orders
-    }
-
-    public void deletePartner(String partnerId){
-        // your code here
-        // delete partner by ID
-    }
-
-    public void deleteOrder(String orderId){
-        // your code here
-        // delete order by ID
-    }
-
-    public Integer findCountOfUnassignedOrders(){
-        // your code here
-    }
-
-    public Integer findOrdersLeftAfterGivenTimeByPartnerId(String timeString, String partnerId){
-        // your code here
-    }
-
-    public String findLastDeliveryTimeByPartnerId(String partnerId){
-        // your code here
-        // code should return string in format HH:MM
     }
 }
